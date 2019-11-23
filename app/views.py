@@ -654,7 +654,8 @@ class BasePriceApi(APIView):
     def post(self, request, format=None):
         try:
             price = request.data.get('precio')
-            cost = BasePrice.objects.create(base=price)
+            count_after = request.data.get('kilometros')
+            cost = BasePrice.objects.create(base=price, count_after=count_after)
             cost_serializers = ValueKilometerSerializer(cost, many=False)
             response = {
                 'content': cost_serializers.data,

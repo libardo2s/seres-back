@@ -26,7 +26,7 @@ SECRET_KEY = 'kr_)5^6+@)24&f=fi%i6kwl91%2gdmz3*&s-ul4(qmt%3^n2=h'
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-#CORS_ORIGIN_WHITELIST = []
+CORS_ORIGIN_WHITELIST = ["http://localhost:3001", "http://localhost:3000"]
 
 # Application definition
 
