@@ -351,7 +351,7 @@ def sendMessage(request):
         )
 
         message_servicio_serializer = MessageSerializer(message_servicio, many=False)
-        sendNotificationClient(message_servicio, service.client.id, 'add_message')
+        sendNotificationClient(message_servicio_serializer.data, service.client.id, 'add_message')
 
         response = {
             'content': message_servicio_serializer.data,
@@ -398,7 +398,11 @@ def updateServiceClient(request, id=None):
         elif update == "1":
             service.distance = distance
             service.time = time
-            service.value = distance*cost.cost+base.base
+            if distance > base.count_after:
+                service.value = distance*cost.cost+base.base
+            else:
+                service.value = base.base
+
             service.save()
             service_serializer = ServiceSerializer(service, many=False)
         
