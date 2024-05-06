@@ -20,16 +20,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# SECRET_KEY = 'kr_)5^6+@)24&f=fi%i6kwl91%2gdmz3*&s-ul4(qmt%3^n2=h'
-SECRET_KEY = os.environ.get("SECRET_KEY")
+SECRET_KEY = "kr_)5^6+@)24&f=fi%i6kwl91%2gdmz3*&s-ul4(qmt%3^n2=h"
+# SECRET_KEY = os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = True
-DEBUG = bool(os.environ.get("DEBUG", default=0))
+DEBUG = True
+# DEBUG = bool(os.environ.get("DEBUG", default=0))
 
-# ALLOWED_HOSTS = ["*"]
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(",")
-CORS_ORIGIN_WHITELIST = os.environ.get("DJANGO_ALLOWED_HOSTS").split(",")
+ALLOWED_HOSTS = ["*"]
+# ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS").split(",")
+# CORS_ORIGIN_WHITELIST = os.environ.get("DJANGO_ALLOWED_HOSTS").split(",")
 
 # Application definition
 
@@ -80,21 +80,21 @@ WSGI_APPLICATION = "seresappbackend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 
-# DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.sqlite3',
-#        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#    }
-# }
+"""DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": "db.sqlite3",
+    }
+}"""
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql_psycopg2",
-        "NAME": "seres_db",
-        "USER": "seres_usr_db",
-        "PASSWORD": "seresapp2019",
-        "HOST": "web545.webfaction.com",
-        "PORT": "5432",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": "hermes",
+        "USER": "postgres",
+        "PASSWORD": "postgres",
+        "HOST": "db",
+        "PORT": 5432,
     }
 }
 
@@ -129,14 +129,16 @@ USE_THOUSAND_SEPARATOR = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
-STATIC_ROOT = "/home/habitapp/webapps/seresapp_statics/"
-STATIC_URL = "http://seresapp.co/static/"
-MEDIA_ROOT = "/home/habitapp/webapps/seresapp_media/"
-MEDIA_URL = "http://seresapp.co/media/"
+STATIC_URL = "/static/"
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-EMAIL_USE_TLS = True
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_HOST_USER = "libardocuello90@gmail.com"
-EMAIL_HOST_PASSWORD = "Lcuello1920@1990."
-EMAIL_PORT = 587
+# EMAIL_USE_TLS = True
+# EMAIL_HOST = "smtp.gmail.com"
+# EMAIL_HOST_USER = "libardocuello90@gmail.com"
+# EMAIL_HOST_PASSWORD = "Lcuello1920@1990."
+# EMAIL_PORT = 587
