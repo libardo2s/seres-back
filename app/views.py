@@ -835,14 +835,7 @@ def sendNotificationDriver(data, action):
             notification=messaging.Notification(title=message_title, body=message_body),
         )
         response = messaging.send_multicast(message)
-        """
-        result = push_service.notify_multiple_devices(
-            registration_ids=registration_ids,
-            message_title=message_title,
-            message_body=message_body,
-            data_message=data_message,
-        )
-        """
+
         print(f" success {response}")
     except Exception as e:
         print(f"error {str(e)}")
@@ -853,22 +846,18 @@ def sendNotificationClient(data, id_client, action):
     message_title = "Actualización de servicio"
     message_body = "SeresApp, tu servicio ha cambiado"
     tokens = TokenPhoneFCM.objects.filter(user__id=id_client)
+    data = {key: str(value) for key, value in data.items()}
     data_message = {"data": data, "action": action, "type_user": "client"}
     for token_fmc in tokens:
         registration_ids.append(token_fmc.toke_phone)
-
-    push_service = FCMNotification(
-        api_key=FCMNotification(
-            api_key="BHi8c7BY6HZdFQJSuD7QENETSVzwXVSjK60wPw0dM_dvbJkRMoLTIo8CGWDqEQF7sOJE1XxG-6jke2NQL5fCpdI"
-        )
-    )
     try:
-        result = push_service.notify_multiple_devices(
-            registration_ids=registration_ids,
-            message_title=message_title,
-            message_body=message_body,
-            data_message=data_message,
+        message = messaging.MulticastMessage(
+            data=data,
+            tokens=registration_ids,
+            notification=messaging.Notification(title=message_title, body=message_body),
         )
-        print(result)
+        response = messaging.send_multicast(message)
+
+        print(response)
     except Exception as e:
         print(e)
