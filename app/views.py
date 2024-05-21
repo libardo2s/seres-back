@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import json
 import base64
 from datetime import datetime
 
@@ -18,6 +19,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 # DJANGO REST FRAMEWORK
+from firebase_config import FIREBASE_CONFIG
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -46,6 +48,12 @@ from app.serializers.Message import MessageSerializer
 # TOKEN
 from .token import account_activation_token
 from pyfcm import FCMNotification
+
+import firebase_admin
+from firebase_admin import credentials, messaging
+
+cred = credentials.Certificate(FIREBASE_CONFIG)
+firebase_admin.initialize_app(cred)
 
 
 @api_view(["POST"])
@@ -230,6 +238,14 @@ def tokerUserFmc(request):
         if request.method == "POST":
             user_id = request.data.get("user_id")
             token_fmc = request.data.get("token")
+            print(f"token fmc: {token_fmc}")
+            if token_fmc == "":
+                response = {
+                    "content": [],
+                    "isOk": True,
+                    "message": "Token vacio",
+                }
+                return Response(response, status=status.HTTP_200_OK)
 
             user = UserExtended.objects.get(id=user_id)
             if TokenPhoneFCM.objects.filter(user=user).exists():
@@ -801,6 +817,7 @@ class CommentApi(APIView):
 
 def sendNotificationDriver(data, action):
     registration_ids = []
+    data = {key: str(value) for key, value in data.items()}
     data_message = {"data": data, "action": action, "type_user": "driver"}
     message_title = "Nuevo Servicio"
     message_body = "SeresApp, tienes un nuevo servicio"
@@ -808,17 +825,27 @@ def sendNotificationDriver(data, action):
     for token_fmc in tokens:
         registration_ids.append(token_fmc.toke_phone)
 
-    push_service = FCMNotification(api_key=os.environ.get("FMC_APY_KEY"))
+    # push_service = FCMNotification(
+    #    api_key="BHi8c7BY6HZdFQJSuD7QENETSVzwXVSjK60wPw0dM_dvbJkRMoLTIo8CGWDqEQF7sOJE1XxG-6jke2NQL5fCpdI"
+    # )
     try:
+        message = messaging.MulticastMessage(
+            data=data,
+            tokens=registration_ids,
+            notification=messaging.Notification(title=message_title, body=message_body),
+        )
+        response = messaging.send_multicast(message)
+        """
         result = push_service.notify_multiple_devices(
             registration_ids=registration_ids,
             message_title=message_title,
             message_body=message_body,
             data_message=data_message,
         )
-        print(result)
+        """
+        print(f" success {response}")
     except Exception as e:
-        print(e)
+        print(f"error {str(e)}")
 
 
 def sendNotificationClient(data, id_client, action):
@@ -831,7 +858,9 @@ def sendNotificationClient(data, id_client, action):
         registration_ids.append(token_fmc.toke_phone)
 
     push_service = FCMNotification(
-        api_key="AAAACLbce_k:APA91bHj61GTr9duB6hW3QR9EwgRgjBOsgukOO7shDAf1Z_ZDxt1SMuYDOamWq1Ma_p2pT7ONCQ7aoAphA_T16e_x_wW0L-i6XveZNtqlEFek8UVhX2vFqt1xNo81IhVm-Uoho-mPP7G"
+        api_key=FCMNotification(
+            api_key="BHi8c7BY6HZdFQJSuD7QENETSVzwXVSjK60wPw0dM_dvbJkRMoLTIo8CGWDqEQF7sOJE1XxG-6jke2NQL5fCpdI"
+        )
     )
     try:
         result = push_service.notify_multiple_devices(

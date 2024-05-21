@@ -91,3 +91,4 @@ env/
 .vscode
 db.sqlite3
 *.pyc
+firebase_config.py
