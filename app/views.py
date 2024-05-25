@@ -822,12 +822,10 @@ def sendNotificationDriver(data, action):
     message_title = "Nuevo Servicio"
     message_body = "SeresApp, tienes un nuevo servicio"
     tokens = TokenPhoneFCM.objects.filter(user__is_driver=True)
+    data["action"] = action
+    data["type_user"] = "driver"
     for token_fmc in tokens:
         registration_ids.append(token_fmc.toke_phone)
-
-    # push_service = FCMNotification(
-    #    api_key="BHi8c7BY6HZdFQJSuD7QENETSVzwXVSjK60wPw0dM_dvbJkRMoLTIo8CGWDqEQF7sOJE1XxG-6jke2NQL5fCpdI"
-    # )
     try:
         message = messaging.MulticastMessage(
             data=data,
@@ -847,7 +845,8 @@ def sendNotificationClient(data, id_client, action):
     message_body = "SeresApp, tu servicio ha cambiado"
     tokens = TokenPhoneFCM.objects.filter(user__id=id_client)
     data = {key: str(value) for key, value in data.items()}
-    data_message = {"data": data, "action": action, "type_user": "client"}
+    data["action"] = action
+    data["type_user"] = "client"
     for token_fmc in tokens:
         registration_ids.append(token_fmc.toke_phone)
     try:
