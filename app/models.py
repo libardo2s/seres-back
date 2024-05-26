@@ -2,6 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
+TYPE_BALANCE_DETAIL = (("recarga", "Recarga"), ("servicio", "Servicio"))
+
+
 # Create your models here.
 class UserExtended(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -18,6 +21,25 @@ class UserExtended(models.Model):
 
     def __str__(self):
         return "%s - %s %s" % (self.id, self.user.first_name, self.user.last_name)
+
+
+class DriverBalance(models.Model):
+    created_at = models.DateTimeField(auto_now=True)
+    driver = models.ForeignKey(
+        UserExtended, related_name="balance_driver", on_delete=models.CASCADE
+    )
+    total = models.FloatField("Total Balance Conductor", default=0.0)
+
+
+class DriverBalanceDetail(models.Model):
+    RC = "recarga"
+    SE = "servicio"
+    created_at = models.DateTimeField(auto_now=True)
+    driver_balance = models.ForeignKey(
+        DriverBalance, related_name="driver_balance", on_delete=models.CASCADE
+    )
+    value = models.FloatField("Valor recarga - uso", default=0.0)
+    type = models.CharField("Tipo de balance", choices=TYPE_BALANCE_DETAIL, default=RC)
 
 
 class Service(models.Model):
@@ -76,6 +98,10 @@ class ValueKilometer(models.Model):
 
     def __str__(self):
         return "%s ---- %s" % (self.cost, self.last_update)
+
+
+class DiscountService(models.Model):
+    cost = models.FloatField("Costo a descontara por servicio", default=0.0)
 
 
 class BasePrice(models.Model):

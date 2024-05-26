@@ -19,6 +19,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 # DJANGO REST FRAMEWORK
+from app.serializers.DriverBalance import DriverBalanceSerializer
 from firebase_config import FIREBASE_CONFIG
 from rest_framework import status
 from rest_framework.views import APIView
@@ -27,6 +28,9 @@ from rest_framework.decorators import api_view
 
 # MODELS
 from .models import (
+    DiscountService,
+    DriverBalance,
+    DriverBalanceDetail,
     UserExtended,
     Service,
     TokenPhoneFCM,
@@ -323,12 +327,31 @@ def updateServiceDriver(request, id=None):
         state = request.data.get("estado")
 
         driver = UserExtended.objects.get(id=driver_id)
+        driver_balance = DriverBalance.objects.get(driver_id=driver_id)
         service = Service.objects.get(id=id)
+        discount = DiscountService.objects.all().first()
 
         if service.driver is None:
+            if driver_balance.total < discount.cost:
+                response = {
+                    "content": [],
+                    "isOk": False,
+                    "message": "Saldo insuficiente. Por favor, recargue para poder aceptar servicios.",
+                }
+
+                return Response(response, status=status.HTTP_200_OK)
+
             service.driver = driver
             service.state = state
             service.save()
+
+            driver_balance.total -= discount.cost
+            DriverBalanceDetail.objects.create(
+                driver_balance=driver_balance,
+                value=discount.cost,
+                type=DriverBalanceDetail.SE,
+            )
+
             services_serializer = ServiceSerializer(service, many=False)
             response = {
                 "content": services_serializer.data,
@@ -815,13 +838,36 @@ class CommentApi(APIView):
             return Response(response, status=status.HTTP_200_OK)
 
 
+class DriverBalanceApi(APIView):
+    def get(self, request, driver_id=None, format=None):
+        try:
+            driver_balance = DriverBalance.objects.get(driver_id=driver_id)
+            driver_balance_serializer = DriverBalanceSerializer(
+                driver_balance, many=False
+            )
+            response = {
+                "content": driver_balance_serializer.data,
+                "isOk": True,
+                "message": "",
+            }
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            response = {
+                "content": [],
+                "isOk": False,
+                "message": str(e),
+            }
+            return Response(response, status=status.HTTP_200_OK)
+
+
 def sendNotificationDriver(data, action):
     registration_ids = []
     data = {key: str(value) for key, value in data.items()}
-    data_message = {"data": data, "action": action, "type_user": "driver"}
     message_title = "Nuevo Servicio"
     message_body = "SeresApp, tienes un nuevo servicio"
-    tokens = TokenPhoneFCM.objects.filter(user__is_driver=True)
+    tokens = TokenPhoneFCM.objects.filter(
+        user__is_driver=True, user__status="Disponible"
+    )
     data["action"] = action
     data["type_user"] = "driver"
     for token_fmc in tokens:
