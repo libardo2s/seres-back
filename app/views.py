@@ -346,6 +346,8 @@ def updateServiceDriver(request, id=None):
             service.save()
 
             driver_balance.total -= discount.cost
+            driver_balance.save()
+
             DriverBalanceDetail.objects.create(
                 driver_balance=driver_balance,
                 value=discount.cost,
