@@ -147,7 +147,5 @@ class DriverPayment(models.Model):
     driver = models.ForeignKey(
         UserExtended, related_name="payment_drive", on_delete=models.CASCADE
     )
-    status = models.CharField(
-        "Estado", choices=STATUS_PAYMENTS, default=STATUS_PAYMENTS[pending]
-    )
+    status = models.CharField("Estado", choices=STATUS_PAYMENTS, default=approved)
     payment_id = models.CharField("Id payU", max_length=100, default="")
