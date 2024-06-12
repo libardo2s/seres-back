@@ -3,6 +3,12 @@ from django.contrib.auth.models import User
 
 
 TYPE_BALANCE_DETAIL = (("recarga", "Recarga"), ("servicio", "Servicio"))
+STATUS_PAYMENTS = (
+    ("approved", "Transacción aprobada"),
+    ("failed", "Transacción fallida"),
+    ("declined", "Transacción rechazada"),
+    ("pending", "Transacción pendiente"),
+)
 
 
 # Create your models here.
@@ -127,3 +133,21 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.comment
+
+
+class DriverPayment(models.Model):
+    approved = "approved"
+    failed = "failed"
+    declined = "rechazado"
+    pending = "pending"
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    amount = models.FloatField("Total pagado", default=0.0)
+    driver = models.ForeignKey(
+        UserExtended, related_name="payment_drive", on_delete=models.CASCADE
+    )
+    status = models.CharField(
+        "Estado", choices=STATUS_PAYMENTS, default=STATUS_PAYMENTS[pending]
+    )
+    payment_id = models.CharField("Id payU", max_length=100, default="")
