@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import (
     DriverBalanceApi,
+    get_bank_list_pse,
     login,
     register,
     loginAdmin,
@@ -42,4 +43,5 @@ urlpatterns = [
     path("token/fmc/delete/<int:id>/", deleteTokenFmc),
     path("terminos/", pdfDownload),
     path("messages/", sendMessage),
+    path("banks/", get_bank_list_pse),
 ]

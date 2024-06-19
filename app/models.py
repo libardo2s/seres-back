@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 
 TYPE_BALANCE_DETAIL = (("recarga", "Recarga"), ("servicio", "Servicio"))
 STATUS_PAYMENTS = (
+    ("created", "Transacción creada"),
     ("approved", "Transacción aprobada"),
     ("failed", "Transacción fallida"),
     ("declined", "Transacción rechazada"),
@@ -18,6 +19,9 @@ class UserExtended(models.Model):
     phone = models.CharField("Telefono", max_length=10, unique=True)
     birth_date = models.DateField("Fecha de nacimiento", null=True, blank=True)
     is_driver = models.BooleanField("Es conductor", default=False, null=True)
+    document_number = models.CharField(
+        "Número de documento", max_length=12, null=True, blank=True
+    )
     photo_profile = models.ImageField(
         "Foto de Perfil", upload_to="fotos_de_perfil", null=True, blank=True
     )
@@ -136,6 +140,7 @@ class Comment(models.Model):
 
 
 class DriverPayment(models.Model):
+    created = "created"
     approved = "approved"
     failed = "failed"
     declined = "rechazado"
@@ -149,3 +154,5 @@ class DriverPayment(models.Model):
     )
     status = models.CharField("Estado", choices=STATUS_PAYMENTS, default=approved)
     payment_id = models.CharField("Id payU", max_length=100, default="")
+    order_id = models.CharField("Order Id payU", max_length=100, default="")
+    pse_url = models.CharField("Url pse", max_length=500, default="")

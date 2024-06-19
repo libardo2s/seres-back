@@ -3,6 +3,7 @@ from .models import (
     DiscountService,
     DriverBalance,
     DriverBalanceDetail,
+    DriverPayment,
     UserExtended,
     Service,
     TokenPhoneFCM,
@@ -23,3 +24,4 @@ admin.site.register(MessageService)
 admin.site.register(DriverBalance)
 admin.site.register(DriverBalanceDetail)
 admin.site.register(DiscountService)
+admin.site.register(DriverPayment)

@@ -18,4 +18,6 @@ class UserExtendedSerializer(serializers.ModelSerializer):
             "photo_profile",
             "license_plate",
             "status",
+            "document_number",
+            "address",
         )

@@ -2,6 +2,8 @@
 import os
 import json
 import base64
+import hashlib
+import requests
 from datetime import datetime
 
 # DJANGO
@@ -16,10 +18,14 @@ from django.core.files.base import ContentFile
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.sites.shortcuts import get_current_site
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.http import urlsafe_base64_decode
 
 # DJANGO REST FRAMEWORK
-from app.serializers.DriverBalance import DriverBalanceSerializer
+from app.serializers.DriverBalance import (
+    DriverBalanceDetailSerializer,
+    DriverBalanceSerializer,
+)
+from app.serializers.DriverPayment import DriverPaymentSerializer
 from firebase_config import FIREBASE_CONFIG
 from rest_framework import status
 from rest_framework.views import APIView
@@ -31,6 +37,7 @@ from .models import (
     DiscountService,
     DriverBalance,
     DriverBalanceDetail,
+    DriverPayment,
     UserExtended,
     Service,
     TokenPhoneFCM,
@@ -518,6 +525,61 @@ actualizacion: 2 -> Estado
 """
 
 
+@api_view(["GET"])
+def get_bank_list_pse(request):
+    try:
+        url = (
+            os.environ.get("PAYU_TEST_API")
+            if os.environ.get("PAYU_ENV") == "Test"
+            else os.environ.get("PAYU_PROD_API")
+        )
+        data = {
+            "language": "es",
+            "command": "GET_BANKS_LIST",
+            "merchant": {
+                "apiLogin": os.environ.get("PAYU_API_LOGIN"),
+                "apiKey": os.environ.get("PAYU_API_KEY"),
+            },
+            "test": True if os.environ.get("PAYU_ENV") == "Test" else False,
+            "bankListInformation": {"paymentMethod": "PSE", "paymentCountry": "CO"},
+        }
+        headers = {
+            "Content-Type": "application/json; charset=utf-8",
+            "Accept": "application/json",
+            "Content-Length": "length",
+        }
+
+        response_data = requests.post(url, headers=headers, data=json.dumps(data))
+
+        if response_data.status_code == 200:
+            # Parse the JSON response
+            response_data = response_data.json()
+
+            # Process the response data
+            banks = response_data.get("banks", [])
+
+            response = {
+                "content": banks,
+                "isOk": True,
+                "message": "",
+            }
+            return Response(response, status=status.HTTP_200_OK)
+        else:
+            response = {
+                "content": [],
+                "isOk": False,
+                "message": response_data.text,
+            }
+            return Response(response, status=status.HTTP_200_OK)
+    except Exception as e:
+        response = {
+            "content": [],
+            "isOk": False,
+            "message": str(e),
+        }
+        return Response(response, status=status.HTTP_200_OK)
+
+
 class UsersApi(APIView):
     def get(self, request, format=None):
         try:
@@ -539,15 +601,19 @@ class UsersApi(APIView):
 
     def put(self, request, id=None, format=None):
         try:
+            print(request.data)
             actualizacion = request.data.get("actualizacion")
             user_extended = UserExtended.objects.get(id=id)
 
             if actualizacion == "0":
                 user_extended.user.first_name = request.data.get("nombre")
                 user_extended.user.last_name = request.data.get("apellido")
-                user_extended.user.save()
-                user_extended.birth_date = request.data.get("fecha_nacimiento")
+                if request.data.get("fecha_nacimiento"):
+                    user_extended.birth_date = request.data.get("fecha_nacimiento")
                 user_extended.phone = request.data.get("telefono")
+                user_extended.address = request.data.get("address")
+                user_extended.document_number = request.data.get("document")
+                user_extended.user.save()
             elif actualizacion == "1":
                 format, imgstr = request.data.get("foto_perfil").split(";base64,")
                 ext = format.split("/")[-1]
@@ -844,11 +910,20 @@ class DriverBalanceApi(APIView):
     def get(self, request, driver_id=None, format=None):
         try:
             driver_balance = DriverBalance.objects.get(driver_id=driver_id)
+            driver_balance_detail = DriverBalanceDetail.objects.filter(
+                driver_balance__driver_id=driver_id
+            )
             driver_balance_serializer = DriverBalanceSerializer(
                 driver_balance, many=False
             )
+            driver_balance_detail_serializer = DriverBalanceDetailSerializer(
+                driver_balance_detail, many=True
+            )
             response = {
-                "content": driver_balance_serializer.data,
+                "content": {
+                    "balance": driver_balance_serializer.data,
+                    "details": driver_balance_detail_serializer.data,
+                },
                 "isOk": True,
                 "message": "",
             }
@@ -860,6 +935,179 @@ class DriverBalanceApi(APIView):
                 "message": str(e),
             }
             return Response(response, status=status.HTTP_200_OK)
+
+    def post(self, request, format=None):
+        try:
+            driver_id = request.data.get("driveId")
+            bank = request.data.get("bank")
+            amount = request.data.get("amount")
+
+            driver = UserExtended.objects.get(id=driver_id)
+            driver_payment = DriverPayment.objects.create(
+                amount=amount, driver=driver, status=DriverPayment.created
+            )
+            tax_amount = amount * 0.19
+            amount_with_tax = amount + tax_amount
+            reference_code = f"payment_driver_{driver_payment.id}_{datetime.now()}"
+            signature = hashlib.md5(
+                str(
+                    f"{os.environ.get('PAYU_API_KEY')}~{os.environ.get('MERCHAN_ID')}~{reference_code}~{amount_with_tax}~COP"
+                ).encode("utf-8")
+            )
+            session_id = hashlib.md5(
+                str(request.session._get_or_create_session_key()).encode("utf-8")
+            )
+
+            url = (
+                os.environ.get("PAYU_TEST_API")
+                if os.environ.get("PAYU_ENV") == "Test"
+                else os.environ.get("PAYU_PROD_API")
+            )
+
+            data = {
+                "language": "es",
+                "command": "SUBMIT_TRANSACTION",
+                "merchant": {
+                    "apiLogin": os.environ.get("PAYU_API_LOGIN"),
+                    "apiKey": os.environ.get("PAYU_API_KEY"),
+                },
+                "transaction": {
+                    "order": {
+                        "accountId": os.environ.get("PAYU_ACCOUNT_ID"),
+                        "referenceCode": reference_code,
+                        "description": "Recarga saldo conductor",
+                        "language": "es",
+                        "signature": signature.hexdigest(),
+                        "buyer": {
+                            "fullName": f"{driver.user.first_name} {driver.user.last_name}",
+                            "emailAddress": driver.user.email,
+                            "contactPhone": driver.phone,
+                            "dniNumber": driver.document_number,
+                            "shippingAddress": {
+                                "street1": driver.address,
+                                "street2": driver.address,
+                                "city": "Valledupar",
+                                "state": "Cesar",
+                                "country": "CO",
+                                "postalCode": "200005",
+                                "phone": driver.phone,
+                            },
+                        },
+                        "additionalValues": {
+                            "TX_VALUE": {
+                                "value": amount_with_tax,
+                                "currency": "COP",
+                            },
+                            "TX_TAX": {"value": tax_amount, "currency": "COP"},
+                            "TX_TAX_RETURN_BASE": {"value": amount, "currency": "COP"},
+                        },
+                        "shippingAddress": {
+                            "street1": driver.address,
+                            "street2": driver.address,
+                            "city": "Valledupar",
+                            "state": "Cesar",
+                            "country": "CO",
+                            "postalCode": "200005",
+                            "phone": driver.phone,
+                        },
+                    },
+                    "payer": {
+                        "fullName": f"{driver.user.first_name} {driver.user.last_name}",
+                        "emailAddress": driver.user.email,
+                        "contactPhone": driver.phone,
+                        "dniNumber": driver.document_number,
+                        "billingAddress": {
+                            "street1": driver.address,
+                            "street2": driver.address,
+                            "city": "Valledupar",
+                            "state": "Cesar",
+                            "country": "CO",
+                            "postalCode": "200005",
+                            "phone": driver.phone,
+                        },
+                    },
+                    "extraParameters": {
+                        "RESPONSE_URL": "http://www.payu.com/response",
+                        "PSE_REFERENCE1": "127.0.0.1",
+                        "FINANCIAL_INSTITUTION_CODE": bank.get("pseCode"),
+                        "USER_TYPE": "N",
+                        "PSE_REFERENCE2": "CC",
+                        "PSE_REFERENCE3": driver.document_number,
+                    },
+                    "type": "AUTHORIZATION_AND_CAPTURE",
+                    "paymentMethod": "PSE",
+                    "paymentCountry": "CO",
+                    "deviceSessionId": session_id.hexdigest(),
+                    "ipAddress": get_client_ip(request),
+                    "cookie": request.META.get("HTTP_COOKIE"),
+                    "userAgent": request.META["HTTP_USER_AGENT"],
+                },
+                "test": True if os.environ.get("PAYU_ENV") != "Test" else False,
+            }
+
+            headers = {
+                "Content-Type": "application/json; charset=utf-8",
+                "Accept": "application/json",
+                "Content-Length": "length",
+            }
+
+            response_data = requests.post(
+                url, headers=headers, data=json.dumps(data, indent=4)
+            )
+            print(response_data)
+
+            if response_data.status_code == 200:
+                # Parse the JSON response
+                response_data = response_data.json()
+                print(response_data)
+                driver_payment.payment_id = response_data.get(
+                    "transactionResponse"
+                ).get("transactionId")
+                driver_payment.status = (
+                    response_data.get("transactionResponse").get("state").lower()
+                )
+                driver_payment.order_id = response_data.get("transactionResponse").get(
+                    "orderId"
+                )
+                driver_payment.pse_url = (
+                    response_data.get("transactionResponse")
+                    .get("extraParameters")
+                    .get("BANK_URL")
+                )
+                driver_payment.save()
+
+                serializer = DriverPaymentSerializer(driver_payment, many=False)
+
+                response = {
+                    "content": serializer.data,
+                    "isOk": True,
+                    "message": "",
+                }
+                return Response(response, status=status.HTTP_200_OK)
+            else:
+                response = {
+                    "content": [],
+                    "isOk": False,
+                    "message": response_data.text,
+                }
+                return Response(response, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            response = {
+                "content": [],
+                "isOk": False,
+                "message": str(e),
+            }
+            return Response(response, status=status.HTTP_200_OK)
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(",")[0]
+    else:
+        ip = request.META.get("REMOTE_ADDR")
+    return ip
 
 
 def sendNotificationDriver(data, action):
