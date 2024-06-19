@@ -1054,12 +1054,10 @@ class DriverBalanceApi(APIView):
             response_data = requests.post(
                 url, headers=headers, data=json.dumps(data, indent=4)
             )
-            print(response_data)
 
             if response_data.status_code == 200:
                 # Parse the JSON response
                 response_data = response_data.json()
-                print(response_data)
                 driver_payment.payment_id = response_data.get(
                     "transactionResponse"
                 ).get("transactionId")
