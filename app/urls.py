@@ -19,6 +19,7 @@ from .views import (
     updateServiceClient,
     CommentApi,
     BasePriceApi,
+    webhook,
 )
 
 urlpatterns = [
@@ -44,4 +45,5 @@ urlpatterns = [
     path("terminos/", pdfDownload),
     path("messages/", sendMessage),
     path("banks/", get_bank_list_pse),
+    path("webhook/", webhook),
 ]

@@ -580,6 +580,37 @@ def get_bank_list_pse(request):
         return Response(response, status=status.HTTP_200_OK)
 
 
+@api_view(["POST"])
+def webhook(request):
+    try:
+        payment_id = request.data.get("pushPaymentId")
+        state = request.data.get("status")
+
+        driver_payment = DriverPayment.objects.get(payment_id=payment_id)
+        driver_balance = DriverBalance.objects.get(driver_id=driver_payment.driver_id)
+
+        if state == "CONFIRMED_BY_THE_BANK":
+            driver_payment.status = DriverPayment.approved
+            driver_balance.total += driver_payment.amount
+            DriverBalanceDetail.objects.create(
+                driver_balance=driver_balance,
+                value=driver_payment.amount,
+                type=DriverBalanceDetail.RC,
+            )
+
+        if state == "REJECTED":
+            driver_payment.status = DriverPayment.declined
+
+        driver_payment.save()
+        driver_balance.save()
+        message = "Success"
+    except Exception as e:
+        print(str(e))
+        message = "Failed"
+
+    return Response({"message": message}, status=status.HTTP_200_OK)
+
+
 class UsersApi(APIView):
     def get(self, request, format=None):
         try:
@@ -912,7 +943,7 @@ class DriverBalanceApi(APIView):
             driver_balance = DriverBalance.objects.get(driver_id=driver_id)
             driver_balance_detail = DriverBalanceDetail.objects.filter(
                 driver_balance__driver_id=driver_id
-            )
+            ).order_by("-id")
             driver_balance_serializer = DriverBalanceSerializer(
                 driver_balance, many=False
             )
@@ -1027,7 +1058,7 @@ class DriverBalanceApi(APIView):
                         },
                     },
                     "extraParameters": {
-                        "RESPONSE_URL": "http://www.payu.com/response",
+                        "RESPONSE_URL": "http://127.0.0.1:8000/api/webhook/",
                         "PSE_REFERENCE1": "127.0.0.1",
                         "FINANCIAL_INSTITUTION_CODE": bank.get("pseCode"),
                         "USER_TYPE": "N",
