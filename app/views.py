@@ -1139,14 +1139,19 @@ def get_client_ip(request):
     return ip
 
 
-def sendNotificationDriver(data, action):
+def sendNotificationDriver(data, action, message=None, driver_id=None):
     registration_ids = []
     data = {key: str(value) for key, value in data.items()}
     message_title = "Nuevo Servicio"
-    message_body = "SeresApp, tienes un nuevo servicio"
-    tokens = TokenPhoneFCM.objects.filter(
-        user__is_driver=True, user__status="Disponible"
-    )
+    message_body = "Taxi 24/7, tienes un nuevo servicio"
+    if driver_id:
+        tokens = TokenPhoneFCM.objects.filter(
+            driver__id=driver_id, user__status="Disponible"
+        )
+    else:
+        tokens = TokenPhoneFCM.objects.filter(
+            user__is_driver=True, user__status="Disponible"
+        )
     data["action"] = action
     data["type_user"] = "driver"
     for token_fmc in tokens:
@@ -1164,10 +1169,10 @@ def sendNotificationDriver(data, action):
         print(f"error {str(e)}")
 
 
-def sendNotificationClient(data, id_client, action):
+def sendNotificationClient(data, id_client, action, message=None):
     registration_ids = []
     message_title = "Actualización de servicio"
-    message_body = "SeresApp, tu servicio ha cambiado"
+    message_body = "Taxi 24/7, tu servicio ha cambiado"
     tokens = TokenPhoneFCM.objects.filter(user__id=id_client)
     data = {key: str(value) for key, value in data.items()}
     data["action"] = action
