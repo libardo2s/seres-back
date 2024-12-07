@@ -20,4 +20,6 @@ class UserExtendedSerializer(serializers.ModelSerializer):
             "status",
             "document_number",
             "address",
+            "vehicle_brand",
+            "vehicle_model",
         )

@@ -26,6 +26,8 @@ class UserExtended(models.Model):
         "Foto de Perfil", upload_to="fotos_de_perfil", null=True, blank=True
     )
     license_plate = models.CharField("Placa", max_length=6, null=True, blank=True)
+    vehicle_brand = models.CharField("Marca", max_length=20, null=True, blank=True)
+    vehicle_model = models.CharField("Modelo", max_length=20, null=True, blank=True)
     is_active = models.BooleanField("Activo", default=True)
     status = models.CharField("Estado del conductor", default="Disponible")
 
